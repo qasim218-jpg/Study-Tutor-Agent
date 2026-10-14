@@ -21,10 +21,11 @@ def create_llm():
         )
 
     return LLM(
-        model=MODEL,
-        base_url=GROQ_BASE_URL,
+        model="openai/gpt-oss-20b",
+        base_url="https://api.groq.com/openai/v1",
         api_key=api_key,
         temperature=0.3,
+        custom_openai=True,
     )
 
 
