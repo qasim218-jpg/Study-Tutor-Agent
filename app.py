@@ -1,5 +1,5 @@
+
 import streamlit as st
-from textwrap import dedent
 from pypdf import PdfReader
 
 from agent import ask_tutor
@@ -7,9 +7,8 @@ from memory import add_message, get_memory_text
 
 
 # ============================================================
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # ============================================================
-
 
 st.set_page_config(
     page_title="Study Tutor AI",
@@ -18,163 +17,51 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Temporary HTML rendering diagnostic
-st.success("HTML rendering diagnostic is running.")
+
+# ============================================================
+# CUSTOM CSS — DARK, PROFESSIONAL THEME
+# ============================================================
 
 st.markdown(
     """
-    <div style="
-        background-color: #123047;
-        color: white;
-        padding: 20px;
-        border-radius: 12px;
-        font-size: 22px;
-    ">
-        HTML TEST — Study Tutor AI
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-
-# ============================================================
-# CUSTOM CSS — ACCESSIBLE DARK THEME
-# ============================================================
-
-st.markdown(
-    dedent("""
     <style>
     :root {
         color-scheme: dark;
-        --bg: #0b1120;
-        --panel: #111b2e;
-        --panel-soft: #162238;
-        --border: #2a3a54;
-        --text: #f1f5f9;
-        --muted: #b6c3d6;
-        --accent: #67e8f9;
-        --accent-strong: #38bdf8;
-    }
-
-    html, body, [class*="css"] {
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system,
-                     BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     .stApp {
         background:
-            radial-gradient(circle at 8% 0%, rgba(56,189,248,.10), transparent 28%),
-            radial-gradient(circle at 95% 8%, rgba(129,140,248,.10), transparent 25%),
+            radial-gradient(
+                circle at 8% 0%,
+                rgba(56, 189, 248, 0.10),
+                transparent 28%
+            ),
+            radial-gradient(
+                circle at 95% 8%,
+                rgba(129, 140, 248, 0.10),
+                transparent 25%
+            ),
             #0b1120;
-        color: var(--text);
+        color: #f1f5f9;
     }
 
     .block-container {
         max-width: 1240px;
         padding-top: 1.8rem;
-        padding-bottom: 3.5rem;
+        padding-bottom: 3rem;
     }
 
-    /* Make all normal text readable, including markdown and captions */
-    .stApp, .stApp p, .stApp li, .stApp label,
-    .stApp [data-testid="stMarkdownContainer"],
-    .stApp [data-testid="stCaptionContainer"],
-    .stApp [data-testid="stWidgetLabel"] {
-        color: var(--text);
-    }
-
-    .stApp [data-testid="stCaptionContainer"] {
-        color: var(--muted) !important;
-    }
-
-    h1, h2, h3, h4, h5, h6 {
+    h1, h2, h3, h4 {
         color: #f8fafc !important;
         letter-spacing: -0.02em;
     }
 
-    a { color: #7dd3fc !important; }
-
-    /* Hero */
-    .hero {
-        padding: 30px 32px;
-        margin-bottom: 24px;
-        border: 1px solid #2c4867;
-        border-radius: 22px;
-        background: linear-gradient(125deg, #14253d 0%, #111a30 65%, #1a1d3a 100%);
-        box-shadow: 0 16px 42px rgba(0,0,0,.22);
+    p, li, label {
+        color: #e2e8f0;
     }
 
-    .hero-badge {
-        display: inline-block;
-        padding: 6px 11px;
-        margin-bottom: 13px;
-        border-radius: 999px;
-        background: rgba(103,232,249,.10);
-        border: 1px solid rgba(103,232,249,.30);
-        color: #a5f3fc !important;
-        font-size: 12px;
-        font-weight: 750;
-        letter-spacing: .09em;
-    }
-
-    .hero-title {
-        color: #f8fafc !important;
-        font-size: clamp(30px, 4.5vw, 50px);
-        font-weight: 850;
-        line-height: 1.08;
-        letter-spacing: -.04em;
-        margin: 0;
-    }
-
-    .hero-subtitle {
-        color: #c6d3e5 !important;
-        font-size: 16px;
-        line-height: 1.65;
-        margin: 12px 0 0;
-        max-width: 720px;
-    }
-
-    /* Feature cards */
-    .feature-card {
-        height: 100%;
-        min-height: 150px;
-        padding: 20px;
-        border-radius: 17px;
-        background: linear-gradient(145deg, #142238, #101a2d);
-        border: 1px solid #2a3b54;
-        box-shadow: 0 8px 24px rgba(0,0,0,.16);
-        transition: border-color .2s ease, transform .2s ease;
-    }
-
-    .feature-card:hover {
-        border-color: #4d789d;
-        transform: translateY(-2px);
-    }
-
-    .feature-icon { font-size: 27px; margin-bottom: 9px; }
-    .feature-title {
-        color: #f8fafc !important;
-        font-size: 16px;
-        font-weight: 750;
-        margin-bottom: 7px;
-    }
-    .feature-description {
-        color: #c0cde0 !important;
-        font-size: 13px;
-        line-height: 1.6;
-    }
-
-    .section-title {
-        color: #f8fafc !important;
-        font-size: 21px;
-        font-weight: 800;
-        margin: 26px 0 12px;
-    }
-
-    /* Sidebar */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0c1424 0%, #101b2d 100%);
+        background: #101b2d;
         border-right: 1px solid #273850;
     }
 
@@ -182,45 +69,6 @@ st.markdown(
         color: #edf4ff;
     }
 
-    .sidebar-logo { text-align: center; padding: 12px 0 20px; }
-    .sidebar-logo-icon { font-size: 40px; margin-bottom: 5px; }
-    .sidebar-logo-title {
-        color: #a5f3fc !important;
-        font-size: 20px;
-        font-weight: 850;
-    }
-    .sidebar-logo-subtitle {
-        color: #b8c6da !important;
-        font-size: 12px;
-        margin-top: 4px;
-    }
-
-    .status-card {
-        padding: 14px;
-        border-radius: 14px;
-        background: #142238;
-        border: 1px solid #2b405b;
-        margin-top: 12px;
-    }
-    .status-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #d5e0ef !important;
-        font-size: 13px;
-        margin: 8px 0;
-    }
-    .status-dot {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #4ade80;
-        box-shadow: 0 0 8px rgba(74,222,128,.45);
-        flex: 0 0 auto;
-    }
-
-    /* Chat messages */
     [data-testid="stChatMessage"] {
         background: #111d30;
         border: 1px solid #293c56;
@@ -228,13 +76,12 @@ st.markdown(
         margin-bottom: 12px;
         padding: 12px 14px;
     }
+
     [data-testid="stChatMessage"] p,
-    [data-testid="stChatMessage"] li,
-    [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] {
+    [data-testid="stChatMessage"] li {
         color: #f1f5f9 !important;
     }
 
-    /* Inputs, select menus, text areas and chat input */
     input, textarea,
     [data-baseweb="input"] input,
     [data-baseweb="textarea"] textarea {
@@ -266,36 +113,33 @@ st.markdown(
         background: #101b2d !important;
         border-color: #3b5878 !important;
     }
+
     [data-testid="stChatInput"] textarea {
         color: #f8fafc !important;
         -webkit-text-fill-color: #f8fafc !important;
     }
 
-    /* Buttons */
-    .stButton > button, .stDownloadButton > button {
+    .stButton > button,
+    .stDownloadButton > button {
         color: #f0fbff !important;
         background: linear-gradient(135deg, #164e63, #3730a3);
         border: 1px solid #3b718d;
         border-radius: 11px;
         min-height: 42px;
         font-weight: 700;
-        transition: filter .2s ease, border-color .2s ease;
     }
-    .stButton > button:hover, .stDownloadButton > button:hover {
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
         color: #ffffff !important;
         border-color: #67e8f9;
         filter: brightness(1.12);
     }
 
-    /* File uploader and alerts */
     [data-testid="stFileUploader"] section {
         background: #111d30;
         border: 1px dashed #3b526e;
         border-radius: 13px;
-    }
-    [data-testid="stFileUploader"] *,
-    [data-testid="stAlert"] * {
-        color: #f1f5f9 !important;
     }
 
     [data-testid="stExpander"] {
@@ -304,23 +148,28 @@ st.markdown(
         border-radius: 12px;
     }
 
-    hr { border-color: #2b3b52 !important; }
+    [data-testid="stAlert"] p {
+        color: inherit;
+    }
 
-    /* Focus indicators */
-    button:focus-visible, input:focus-visible, textarea:focus-visible {
+    hr {
+        border-color: #2b3b52 !important;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
         outline: 2px solid #67e8f9 !important;
         outline-offset: 2px !important;
     }
 
     @media (max-width: 768px) {
-        .block-container { padding: 1rem 1rem 2rem; }
-        .hero { padding: 22px; border-radius: 17px; }
-        .hero-title { font-size: 33px; }
-        .hero-subtitle { font-size: 14px; }
-        .feature-card { margin-bottom: 10px; }
+        .block-container {
+            padding: 1rem 1rem 2rem;
+        }
     }
     </style>
-    """),
+    """,
     unsafe_allow_html=True,
 )
 
@@ -345,76 +194,71 @@ if "pdf_name" not in st.session_state:
 
 with st.sidebar:
 
-    st.markdown(
-        dedent("""
-        <div class="sidebar-logo">
+    # Native Streamlit components — no custom HTML
+    st.title("🎓 Study Tutor AI")
+    st.caption("Your intelligent study companion")
 
-            <div class="sidebar-logo-icon">🎓</div>
+    st.divider()
 
-            <div class="sidebar-logo-title">
-                Study Tutor AI
-            </div>
-
-            <div class="sidebar-logo-subtitle">
-                Your intelligent study companion
-            </div>
-
-        </div>
-        """),
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("---")
-
-    st.markdown("### 📚 Study Material")
+    st.subheader("📚 Study Material")
 
     uploaded_file = st.file_uploader(
         "Upload your study PDF",
         type=["pdf"],
-        help="Upload lecture notes, textbook chapters, or study material.",
+        help=(
+            "Upload lecture notes, textbook chapters, "
+            "or other study material."
+        ),
     )
 
-    if uploaded_file:
+    if uploaded_file is not None:
 
         if uploaded_file.name != st.session_state.pdf_name:
 
             try:
-
                 reader = PdfReader(uploaded_file)
 
-                text = ""
+                extracted_pages = []
 
                 for page in reader.pages:
-
                     page_text = page.extract_text()
 
                     if page_text:
-                        text += page_text + "\n"
+                        extracted_pages.append(page_text)
 
-                st.session_state.study_material = text
+                extracted_text = "\n".join(extracted_pages)
+
+                st.session_state.study_material = extracted_text
                 st.session_state.pdf_name = uploaded_file.name
 
-                st.success(
-                    f"✓ {len(reader.pages)} pages loaded"
-                )
+                if extracted_text.strip():
+                    st.success(
+                        f"PDF loaded: {len(reader.pages)} pages"
+                    )
+                else:
+                    st.warning(
+                        "The PDF contains no extractable text. "
+                        "It may be scanned or image-based."
+                    )
 
             except Exception as e:
+                st.error("Could not read the uploaded PDF.")
+                with st.expander("Technical details"):
+                    st.code(str(e))
 
-                st.error(
-                    f"Could not read PDF: {e}"
-                )
-
-    elif not st.session_state.study_material:
-
+    if st.session_state.study_material:
+        st.caption(
+            f"Active document: {st.session_state.pdf_name}"
+        )
+    elif uploaded_file is None:
         st.caption(
             "Upload lecture notes or a textbook PDF "
-            "to let your tutor study with you."
+            "to let your tutor use your study material."
         )
 
+    st.divider()
 
-    st.markdown("---")
-
-    st.markdown("### ⚙️ Tutor Settings")
+    st.subheader("⚙️ Tutor Settings")
 
     difficulty = st.selectbox(
         "Learning Level",
@@ -435,177 +279,98 @@ with st.sidebar:
         ],
     )
 
+    st.divider()
 
-    st.markdown("---")
+    st.subheader("🧠 Session Memory")
 
-    st.markdown("### 🧠 Session Memory")
-
-    message_count = len(
-        st.session_state.memory
-    )
+    message_count = len(st.session_state.memory)
 
     if message_count:
-
-        st.markdown(
-            dedent(f"""
-            <div class="status-card">
-
-                <div class="status-row">
-                    <span class="status-dot"></span>
-                    {message_count} messages remembered
-                </div>
-
-                <div class="status-row">
-                    📄 Study material:
-                    {"Loaded" if st.session_state.study_material else "Not loaded"}
-                </div>
-
-            </div>
-            """),
-            unsafe_allow_html=True,
+        st.success(
+            f"{message_count} messages in this session"
         )
-
     else:
-
         st.caption(
             "Your conversation will be remembered "
             "during this study session."
         )
 
+    if st.session_state.study_material:
+        st.caption("📄 Study material: Loaded")
+    else:
+        st.caption("📄 Study material: Not loaded")
 
-    st.markdown("")
+    st.divider()
 
-    if st.button("🗑️ Clear Conversation"):
-
+    if st.button(
+        "🗑️ Clear Conversation",
+        use_container_width=True,
+    ):
         st.session_state.memory = []
-
         st.rerun()
 
 
 # ============================================================
-# HERO
+# HERO SECTION — NATIVE STREAMLIT
 # ============================================================
 
-st.markdown(
-    dedent("""
-    <div class="hero">
+st.info("✦ AI-POWERED LEARNING")
 
-        <div class="hero-badge">
-            ✦ AI-POWERED LEARNING
-        </div>
+st.title("Study smarter. Understand deeper.")
 
-        <h1 class="hero-title">
-            Study smarter.<br>
-            Understand deeper.
-        </h1>
-
-        <p class="hero-subtitle">
-            Your personal AI tutor for explanations,
-            practice, questions, and learning.
-        </p>
-
-    </div>
-    """),
-    unsafe_allow_html=True,
+st.write(
+    "Your personal AI tutor for explanations, "
+    "practice, questions, and learning."
 )
 
+st.divider()
+
 
 # ============================================================
-# FEATURE CARDS
+# FEATURE CARDS — NATIVE STREAMLIT
 # ============================================================
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-
-    st.markdown(
-        dedent("""
-        <div class="feature-card">
-
-            <div class="feature-icon">💡</div>
-
-            <div class="feature-title">
-                Understand Concepts
-            </div>
-
-            <div class="feature-description">
-                Get difficult topics explained
-                in simple, student-friendly language.
-            </div>
-
-        </div>
-        """),
-        unsafe_allow_html=True,
-    )
-
+    with st.container(border=True):
+        st.subheader("💡 Understand Concepts")
+        st.write(
+            "Get difficult topics explained in simple, "
+            "student-friendly language."
+        )
 
 with col2:
-
-    st.markdown(
-        dedent("""
-        <div class="feature-card">
-
-            <div class="feature-icon">📚</div>
-
-            <div class="feature-title">
-                Learn From Your Notes
-            </div>
-
-            <div class="feature-description">
-                Upload your study material and
-                ask questions about what you're learning.
-            </div>
-
-        </div>
-        """),
-        unsafe_allow_html=True,
-    )
-
+    with st.container(border=True):
+        st.subheader("📚 Learn From Your Notes")
+        st.write(
+            "Upload your study material and ask questions "
+            "about what you are learning."
+        )
 
 with col3:
-
-    st.markdown(
-        dedent("""
-        <div class="feature-card">
-
-            <div class="feature-icon">🧠</div>
-
-            <div class="feature-title">
-                Personalized Tutoring
-            </div>
-
-            <div class="feature-description">
-                Your tutor remembers the current
-                conversation and adapts to your level.
-            </div>
-
-        </div>
-        """),
-        unsafe_allow_html=True,
-    )
+    with st.container(border=True):
+        st.subheader("🧠 Personalized Tutoring")
+        st.write(
+            "Your tutor uses the current conversation "
+            "and adapts responses to your selected level."
+        )
 
 
 # ============================================================
 # CHAT SECTION
 # ============================================================
 
-st.markdown(
-    '<div class="section-title">💬 Ask Your Tutor</div>',
-    unsafe_allow_html=True,
-)
+st.divider()
+st.subheader("💬 Ask Your Tutor")
 
 
-# Display previous messages
+# Display conversation history
 
 for message in st.session_state.memory:
 
-    with st.chat_message(
-        message["role"]
-    ):
-
-        st.markdown(
-            message["content"]
-        )
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 
 # ============================================================
@@ -620,13 +385,11 @@ question = st.chat_input(
 if question:
 
     # --------------------------------------------------------
-    # User message
+    # Display and save user question
     # --------------------------------------------------------
 
     with st.chat_message("user"):
-
         st.markdown(question)
-
 
     add_message(
         st.session_state.memory,
@@ -634,18 +397,16 @@ if question:
         question,
     )
 
-
     # --------------------------------------------------------
-    # Memory
+    # Retrieve conversation memory
     # --------------------------------------------------------
 
     conversation = get_memory_text(
         st.session_state.memory
     )
 
-
     # --------------------------------------------------------
-    # Tutor context
+    # Prepare tutor context
     # --------------------------------------------------------
 
     tutor_context = f"""
@@ -654,7 +415,6 @@ Student learning level:
 
 Preferred teaching style:
 {response_style}
-
 """
 
     enhanced_question = (
@@ -663,51 +423,44 @@ Preferred teaching style:
         + question
     )
 
-
     # --------------------------------------------------------
-    # Agent
+    # Generate tutor response
     # --------------------------------------------------------
 
     with st.chat_message("assistant"):
 
-        with st.spinner(
-            "🧠 Your tutor is thinking..."
-        ):
+        with st.spinner("🧠 Your tutor is thinking..."):
 
             try:
-
                 answer = ask_tutor(
-
                     question=enhanced_question,
-
                     study_material=(
                         st.session_state.study_material
                     ),
-
                     conversation_memory=conversation,
-
                 )
+
+                if not isinstance(answer, str) or not answer.strip():
+                    answer = (
+                        "I couldn't generate a useful response. "
+                        "Please try asking your question again."
+                    )
 
                 st.markdown(answer)
 
             except Exception as e:
-
                 answer = (
-                    "I encountered an error while "
-                    "processing your question."
+                    "I encountered an error while processing "
+                    "your question. Please try again."
                 )
 
                 st.error(answer)
 
-                with st.expander(
-                    "Technical details"
-                ):
-
+                with st.expander("Technical details"):
                     st.code(str(e))
 
-
     # --------------------------------------------------------
-    # Save response
+    # Save assistant response
     # --------------------------------------------------------
 
     add_message(
@@ -718,23 +471,11 @@ Preferred teaching style:
 
 
 # ============================================================
-# FOOTER
+# FOOTER — NATIVE STREAMLIT
 # ============================================================
 
-st.markdown("---")
+st.divider()
 
-st.markdown(
-    dedent("""
-    <div style="
-        text-align:center;
-        color:#64748b;
-        font-size:12px;
-        padding:15px;
-    ">
-
-        Study Tutor AI • Built with Streamlit, CrewAI & Groq
-
-    </div>
-    """),
-    unsafe_allow_html=True,
+st.caption(
+    "Study Tutor AI • Built with Streamlit, CrewAI & Groq"
 )
