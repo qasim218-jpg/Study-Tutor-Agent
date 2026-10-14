@@ -5,7 +5,7 @@ A simple AI Study Tutor built with:
 - Streamlit
 - CrewAI
 - Groq
-- GPT-OSS-120B
+- GPT-OSS-20B via Groq
 - Python
 
 ## Features
