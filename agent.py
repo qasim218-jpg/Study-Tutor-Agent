@@ -5,7 +5,8 @@ from crewai import Agent, Task, Crew, LLM
 from tools import calculator, create_study_material_tool
 
 
-MODEL = "openai/gpt-oss-20b"
+# Groq configuration
+MODEL = "openai/openai/gpt-oss-20b"
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 
@@ -21,8 +22,8 @@ def create_llm():
         )
 
     return LLM(
-        model="openai/gpt-oss-20b",
-        base_url="https://api.groq.com/openai/v1",
+        model=MODEL,
+        base_url=GROQ_BASE_URL,
         api_key=api_key,
         temperature=0.3,
         custom_openai=True,
