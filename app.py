@@ -1,9 +1,12 @@
-from rag import build_index
+import hashlib
+import io
+
 import streamlit as st
 from pypdf import PdfReader
 
 from agent import ask_tutor
 from memory import add_message, get_memory_text
+from rag import build_index
 
 
 # ============================================================
@@ -178,14 +181,114 @@ st.markdown(
 # SESSION STATE
 # ============================================================
 
-if "memory" not in st.session_state:
+DEFAULT_STATE = {
+    "memory": [],
+    "study_material": "",
+    "pdf_name": "",
+    "pdf_hash": "",
+    "rag_index": None,
+    "pdf_page_count": 0,
+    "pdf_error": "",
+}
+
+for key, default_value in DEFAULT_STATE.items():
+    if key not in st.session_state:
+        st.session_state[key] = default_value
+
+
+# ============================================================
+# PDF RESET CALLBACK
+# ============================================================
+
+def clear_pdf():
+    """Remove the active PDF and its semantic index."""
+
+    st.session_state.study_material = ""
+    st.session_state.pdf_name = ""
+    st.session_state.pdf_hash = ""
+    st.session_state.rag_index = None
+    st.session_state.pdf_page_count = 0
+    st.session_state.pdf_error = ""
+
+    # Clear the uploader before the next script run.
+    st.session_state["study_pdf_uploader"] = None
+
+    # Avoid confusing follow-up questions from an old document.
     st.session_state.memory = []
 
-if "study_material" not in st.session_state:
-    st.session_state.study_material = ""
 
-if "pdf_name" not in st.session_state:
+# ============================================================
+# PDF PROCESSING
+# ============================================================
+
+def process_uploaded_pdf(uploaded_file):
+    """
+    Extract selectable text, create a semantic index,
+    and activate the new document only after indexing succeeds.
+    """
+
+    file_bytes = uploaded_file.getvalue()
+    current_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    # Same document: do not index it again.
+    if current_hash == st.session_state.pdf_hash:
+        return
+
+    # Prevent accidental use of the previous PDF if the new one fails.
+    st.session_state.study_material = ""
     st.session_state.pdf_name = ""
+    st.session_state.pdf_hash = ""
+    st.session_state.rag_index = None
+    st.session_state.pdf_page_count = 0
+    st.session_state.pdf_error = ""
+
+    try:
+        with st.spinner("Reading your PDF..."):
+            reader = PdfReader(io.BytesIO(file_bytes))
+
+            extracted_pages = []
+
+            for page in reader.pages:
+                page_text = page.extract_text()
+
+                if page_text:
+                    extracted_pages.append(page_text)
+
+            extracted_text = "\n".join(extracted_pages).strip()
+
+        if not extracted_text:
+            st.session_state.pdf_error = (
+                "No selectable text could be extracted. "
+                "This document may need OCR."
+            )
+            return
+
+        with st.spinner(
+            "Building the semantic search index. "
+            "The first run may take longer while the model loads..."
+        ):
+            index = build_index(extracted_text)
+
+        # Activate only after indexing succeeds.
+        st.session_state.study_material = extracted_text
+        st.session_state.pdf_name = uploaded_file.name
+        st.session_state.pdf_hash = current_hash
+        st.session_state.rag_index = index
+        st.session_state.pdf_page_count = len(reader.pages)
+
+        # Start a fresh conversation for the new document.
+        st.session_state.memory = []
+
+    except Exception as exc:
+        st.session_state.study_material = ""
+        st.session_state.pdf_name = ""
+        st.session_state.pdf_hash = ""
+        st.session_state.rag_index = None
+        st.session_state.pdf_page_count = 0
+
+        st.session_state.pdf_error = (
+            f"{type(exc).__name__}: {exc}"
+        )
 
 
 # ============================================================
@@ -194,7 +297,6 @@ if "pdf_name" not in st.session_state:
 
 with st.sidebar:
 
-    # Native Streamlit components — no custom HTML
     st.title("🎓 Study Tutor AI")
     st.caption("Your intelligent study companion")
 
@@ -205,55 +307,52 @@ with st.sidebar:
     uploaded_file = st.file_uploader(
         "Upload your study PDF",
         type=["pdf"],
+        key="study_pdf_uploader",
         help=(
             "Upload lecture notes, textbook chapters, "
-            "or other study material."
+            "or other selectable-text study material."
         ),
     )
 
     if uploaded_file is not None:
+        process_uploaded_pdf(uploaded_file)
 
-        if uploaded_file.name != st.session_state.pdf_name:
+    if st.session_state.pdf_error:
+        st.error("The PDF could not be prepared.")
 
-            try:
-                reader = PdfReader(uploaded_file)
+        with st.expander("Technical details"):
+            st.code(st.session_state.pdf_error)
 
-                extracted_pages = []
+    if (
+        st.session_state.study_material
+        and st.session_state.rag_index
+    ):
+        st.success("PDF indexed and ready")
 
-                for page in reader.pages:
-                    page_text = page.extract_text()
-
-                    if page_text:
-                        extracted_pages.append(page_text)
-
-                extracted_text = "\n".join(extracted_pages)
-
-                st.session_state.study_material = extracted_text
-                st.session_state.pdf_name = uploaded_file.name
-
-                if extracted_text.strip():
-                    st.success(
-                        f"PDF loaded: {len(reader.pages)} pages"
-                    )
-                else:
-                    st.warning(
-                        "The PDF contains no extractable text. "
-                        "It may be scanned or image-based."
-                    )
-
-            except Exception as e:
-                st.error("Could not read the uploaded PDF.")
-                with st.expander("Technical details"):
-                    st.code(str(e))
-
-    if st.session_state.study_material:
         st.caption(
-            f"Active document: {st.session_state.pdf_name}"
+            f"Document: {st.session_state.pdf_name}"
         )
+
+        st.caption(
+            f"Pages: {st.session_state.pdf_page_count}"
+        )
+
+        st.caption(
+            "Searchable passages: "
+            f"{len(st.session_state.rag_index['chunks']):,}"
+        )
+
+        if st.button(
+            "🗑️ Remove Study PDF",
+            use_container_width=True,
+        ):
+            clear_pdf()
+            st.rerun()
+
     elif uploaded_file is None:
         st.caption(
-            "Upload lecture notes or a textbook PDF "
-            "to let your tutor use your study material."
+            "Upload a study PDF to enable document-based "
+            "semantic search."
         )
 
     st.divider()
@@ -262,11 +361,7 @@ with st.sidebar:
 
     difficulty = st.selectbox(
         "Learning Level",
-        [
-            "Beginner",
-            "Intermediate",
-            "Advanced",
-        ],
+        ["Beginner", "Intermediate", "Advanced"],
     )
 
     response_style = st.selectbox(
@@ -285,20 +380,14 @@ with st.sidebar:
 
     message_count = len(st.session_state.memory)
 
-    if message_count:
-        st.success(
-            f"{message_count} messages in this session"
-        )
-    else:
-        st.caption(
-            "Your conversation will be remembered "
-            "during this study session."
-        )
+    st.caption(
+        f"{message_count} messages in this session"
+    )
 
-    if st.session_state.study_material:
-        st.caption("📄 Study material: Loaded")
-    else:
-        st.caption("📄 Study material: Not loaded")
+    st.caption(
+        "Recent conversation context is limited to help "
+        "control token usage."
+    )
 
     st.divider()
 
@@ -311,7 +400,7 @@ with st.sidebar:
 
 
 # ============================================================
-# HERO SECTION — NATIVE STREAMLIT
+# HERO SECTION
 # ============================================================
 
 st.info("✦ AI-POWERED LEARNING")
@@ -327,7 +416,7 @@ st.divider()
 
 
 # ============================================================
-# FEATURE CARDS — NATIVE STREAMLIT
+# FEATURE CARDS
 # ============================================================
 
 col1, col2, col3 = st.columns(3)
@@ -345,15 +434,15 @@ with col2:
         st.subheader("📚 Learn From Your Notes")
         st.write(
             "Upload your study material and ask questions "
-            "about what you are learning."
+            "using semantic search across relevant passages."
         )
 
 with col3:
     with st.container(border=True):
         st.subheader("🧠 Personalized Tutoring")
         st.write(
-            "Your tutor uses the current conversation "
-            "and adapts responses to your selected level."
+            "Adapt explanations to your learning level "
+            "and preferred teaching style."
         )
 
 
@@ -364,11 +453,8 @@ with col3:
 st.divider()
 st.subheader("💬 Ask Your Tutor")
 
-
-# Display conversation history
-
+# Display saved conversation.
 for message in st.session_state.memory:
-
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
@@ -384,10 +470,21 @@ question = st.chat_input(
 
 if question:
 
-    # --------------------------------------------------------
-    # Display and save user question
-    # --------------------------------------------------------
+    # Capture previous conversation BEFORE saving the new question.
+    conversation = get_memory_text(
+        st.session_state.memory
+    )
 
+    # Add learning preferences without changing the main UI.
+    enhanced_question = f"""
+Student learning level: {difficulty}
+Preferred teaching style: {response_style}
+
+Student question:
+{question}
+"""
+
+    # Display and save the user message.
     with st.chat_message("user"):
         st.markdown(question)
 
@@ -397,36 +494,7 @@ if question:
         question,
     )
 
-    # --------------------------------------------------------
-    # Retrieve conversation memory
-    # --------------------------------------------------------
-
-    conversation = get_memory_text(
-        st.session_state.memory
-    )
-
-    # --------------------------------------------------------
-    # Prepare tutor context
-    # --------------------------------------------------------
-
-    tutor_context = f"""
-Student learning level:
-{difficulty}
-
-Preferred teaching style:
-{response_style}
-"""
-
-    enhanced_question = (
-        tutor_context
-        + "\nStudent question:\n"
-        + question
-    )
-
-    # --------------------------------------------------------
-    # Generate tutor response
-    # --------------------------------------------------------
-
+    # Generate a tutor response using the RAG index.
     with st.chat_message("assistant"):
 
         with st.spinner("🧠 Your tutor is thinking..."):
@@ -438,31 +506,34 @@ Preferred teaching style:
                         st.session_state.study_material
                     ),
                     conversation_memory=conversation,
+                    rag_index=st.session_state.rag_index,
                 )
 
-                if not isinstance(answer, str) or not answer.strip():
+                if (
+                    not isinstance(answer, str)
+                    or not answer.strip()
+                ):
                     answer = (
                         "I couldn't generate a useful response. "
-                        "Please try asking your question again."
+                        "Please try a more specific question."
                     )
 
                 st.markdown(answer)
 
-            except Exception as e:
+            except Exception as exc:
                 answer = (
-                    "I encountered an error while processing "
-                    "your question. Please try again."
+                    "I couldn't process that question. "
+                    "Please try again in a moment."
                 )
 
                 st.error(answer)
 
                 with st.expander("Technical details"):
-                    st.code(str(e))
+                    st.code(
+                        f"{type(exc).__name__}: {exc}"
+                    )
 
-    # --------------------------------------------------------
-    # Save assistant response
-    # --------------------------------------------------------
-
+    # Store the answer for subsequent follow-up questions.
     add_message(
         st.session_state.memory,
         "assistant",
@@ -471,11 +542,11 @@ Preferred teaching style:
 
 
 # ============================================================
-# FOOTER — NATIVE STREAMLIT
+# FOOTER
 # ============================================================
 
 st.divider()
 
 st.caption(
-    "Study Tutor AI • Built with Streamlit, CrewAI & Groq"
+    "Study Tutor AI • Streamlit • Semantic RAG • Groq"
 )
