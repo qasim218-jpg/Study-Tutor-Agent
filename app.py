@@ -1,4 +1,4 @@
-
+from rag import build_index
 import streamlit as st
 from pypdf import PdfReader
 
