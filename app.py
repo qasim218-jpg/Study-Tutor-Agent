@@ -10,12 +10,32 @@ from memory import add_message, get_memory_text
 # PAGE CONFIG
 # ============================================================
 
+
 st.set_page_config(
     page_title="Study Tutor AI",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# Temporary HTML rendering diagnostic
+st.success("HTML rendering diagnostic is running.")
+
+st.markdown(
+    """
+    <div style="
+        background-color: #123047;
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        font-size: 22px;
+    ">
+        HTML TEST — Study Tutor AI
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 
 # ============================================================
