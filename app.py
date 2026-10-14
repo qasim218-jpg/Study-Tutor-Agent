@@ -18,400 +18,286 @@ st.set_page_config(
 
 
 # ============================================================
-# CUSTOM CSS
+# CUSTOM CSS — ACCESSIBLE DARK THEME
 # ============================================================
 
 st.markdown(
     """
     <style>
+    :root {
+        color-scheme: dark;
+        --bg: #0b1120;
+        --panel: #111b2e;
+        --panel-soft: #162238;
+        --border: #2a3a54;
+        --text: #f1f5f9;
+        --muted: #b6c3d6;
+        --accent: #67e8f9;
+        --accent-strong: #38bdf8;
+    }
 
-    /* ========================================================
-       GLOBAL
-       ======================================================== */
+    html, body, [class*="css"] {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                     BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
     .stApp {
         background:
-            radial-gradient(
-                circle at 10% 10%,
-                rgba(0, 229, 255, 0.10),
-                transparent 30%
-            ),
-            radial-gradient(
-                circle at 90% 20%,
-                rgba(76, 0, 255, 0.10),
-                transparent 30%
-            ),
-            linear-gradient(
-                135deg,
-                #050816 0%,
-                #081127 50%,
-                #050816 100%
-            );
-
-        color: #f5f7ff;
+            radial-gradient(circle at 8% 0%, rgba(56,189,248,.10), transparent 28%),
+            radial-gradient(circle at 95% 8%, rgba(129,140,248,.10), transparent 25%),
+            #0b1120;
+        color: var(--text);
     }
-
-    /* Main content */
 
     .block-container {
-        max-width: 1200px;
-        padding-top: 2rem;
-        padding-bottom: 5rem;
+        max-width: 1240px;
+        padding-top: 1.8rem;
+        padding-bottom: 3.5rem;
     }
 
+    /* Make all normal text readable, including markdown and captions */
+    .stApp, .stApp p, .stApp li, .stApp label,
+    .stApp [data-testid="stMarkdownContainer"],
+    .stApp [data-testid="stCaptionContainer"],
+    .stApp [data-testid="stWidgetLabel"] {
+        color: var(--text);
+    }
 
-    /* ========================================================
-       HEADER
-       ======================================================== */
+    .stApp [data-testid="stCaptionContainer"] {
+        color: var(--muted) !important;
+    }
 
+    h1, h2, h3, h4, h5, h6 {
+        color: #f8fafc !important;
+        letter-spacing: -0.02em;
+    }
+
+    a { color: #7dd3fc !important; }
+
+    /* Hero */
     .hero {
-        padding: 28px 30px;
-        margin-bottom: 25px;
-
-        border: 1px solid rgba(0, 229, 255, 0.20);
-        border-radius: 24px;
-
-        background:
-            linear-gradient(
-                135deg,
-                rgba(10, 25, 60, 0.90),
-                rgba(10, 15, 35, 0.75)
-            );
-
-        box-shadow:
-            0 0 40px rgba(0, 229, 255, 0.08),
-            inset 0 1px 0 rgba(255,255,255,0.05);
+        padding: 30px 32px;
+        margin-bottom: 24px;
+        border: 1px solid #2c4867;
+        border-radius: 22px;
+        background: linear-gradient(125deg, #14253d 0%, #111a30 65%, #1a1d3a 100%);
+        box-shadow: 0 16px 42px rgba(0,0,0,.22);
     }
 
     .hero-badge {
         display: inline-block;
-
-        padding: 6px 12px;
-        margin-bottom: 12px;
-
+        padding: 6px 11px;
+        margin-bottom: 13px;
         border-radius: 999px;
-
-        background: rgba(0, 229, 255, 0.10);
-        border: 1px solid rgba(0, 229, 255, 0.30);
-
-        color: #5ee7ff;
-
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
+        background: rgba(103,232,249,.10);
+        border: 1px solid rgba(103,232,249,.30);
+        color: #a5f3fc !important;
+        font-size: 12px;
+        font-weight: 750;
+        letter-spacing: .09em;
     }
 
     .hero-title {
-        font-size: clamp(30px, 5vw, 52px);
-        font-weight: 800;
-
-        line-height: 1.05;
-
+        color: #f8fafc !important;
+        font-size: clamp(30px, 4.5vw, 50px);
+        font-weight: 850;
+        line-height: 1.08;
+        letter-spacing: -.04em;
         margin: 0;
-
-        background:
-            linear-gradient(
-                90deg,
-                #ffffff,
-                #67e8f9,
-                #38bdf8,
-                #a78bfa
-            );
-
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
     }
 
     .hero-subtitle {
-        color: #a9b5d0;
+        color: #c6d3e5 !important;
         font-size: 16px;
-        margin-top: 12px;
-        margin-bottom: 0;
+        line-height: 1.65;
+        margin: 12px 0 0;
+        max-width: 720px;
     }
 
-
-    /* ========================================================
-       FEATURE CARDS
-       ======================================================== */
-
+    /* Feature cards */
     .feature-card {
         height: 100%;
-
+        min-height: 150px;
         padding: 20px;
-
-        border-radius: 18px;
-
-        background:
-            rgba(12, 24, 52, 0.65);
-
-        border: 1px solid rgba(120, 160, 255, 0.13);
-
-        box-shadow:
-            0 8px 30px rgba(0,0,0,0.20);
-
-        transition: 0.25s ease;
+        border-radius: 17px;
+        background: linear-gradient(145deg, #142238, #101a2d);
+        border: 1px solid #2a3b54;
+        box-shadow: 0 8px 24px rgba(0,0,0,.16);
+        transition: border-color .2s ease, transform .2s ease;
     }
 
     .feature-card:hover {
-        border-color: rgba(0, 229, 255, 0.35);
-
-        box-shadow:
-            0 0 25px rgba(0, 229, 255, 0.10);
+        border-color: #4d789d;
+        transform: translateY(-2px);
     }
 
-    .feature-icon {
-        font-size: 27px;
-        margin-bottom: 8px;
-    }
-
+    .feature-icon { font-size: 27px; margin-bottom: 9px; }
     .feature-title {
-        font-weight: 700;
+        color: #f8fafc !important;
         font-size: 16px;
-        color: #ffffff;
+        font-weight: 750;
+        margin-bottom: 7px;
     }
-
     .feature-description {
-        color: #8998b7;
+        color: #c0cde0 !important;
         font-size: 13px;
-        line-height: 1.5;
+        line-height: 1.6;
     }
-
-
-    /* ========================================================
-       SECTION TITLE
-       ======================================================== */
 
     .section-title {
+        color: #f8fafc !important;
         font-size: 21px;
-        font-weight: 750;
-        color: #ffffff;
-        margin-top: 25px;
-        margin-bottom: 12px;
-    }
-
-
-    /* ========================================================
-       CHAT AREA
-       ======================================================== */
-
-    .chat-container {
-        padding: 10px 0;
-    }
-
-    [data-testid="stChatMessage"] {
-        background: rgba(12, 25, 52, 0.55);
-
-        border: 1px solid rgba(120, 160, 255, 0.10);
-
-        border-radius: 18px;
-
-        margin-bottom: 12px;
-
-        padding: 8px;
-    }
-
-
-    /* ========================================================
-       SIDEBAR
-       ======================================================== */
-
-    [data-testid="stSidebar"] {
-        background:
-            linear-gradient(
-                180deg,
-                #060b1b 0%,
-                #081127 100%
-            );
-
-        border-right: 1px solid rgba(0, 229, 255, 0.12);
-    }
-
-    [data-testid="stSidebar"] h2 {
-        color: #ffffff;
-    }
-
-    .sidebar-logo {
-        text-align: center;
-        padding: 12px 0 22px 0;
-    }
-
-    .sidebar-logo-icon {
-        font-size: 42px;
-    }
-
-    .sidebar-logo-title {
-        font-size: 20px;
         font-weight: 800;
-
-        background:
-            linear-gradient(
-                90deg,
-                #67e8f9,
-                #818cf8
-            );
-
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        margin: 26px 0 12px;
     }
 
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0c1424 0%, #101b2d 100%);
+        border-right: 1px solid #273850;
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #edf4ff;
+    }
+
+    .sidebar-logo { text-align: center; padding: 12px 0 20px; }
+    .sidebar-logo-icon { font-size: 40px; margin-bottom: 5px; }
+    .sidebar-logo-title {
+        color: #a5f3fc !important;
+        font-size: 20px;
+        font-weight: 850;
+    }
     .sidebar-logo-subtitle {
-        color: #71809d;
+        color: #b8c6da !important;
         font-size: 12px;
+        margin-top: 4px;
     }
-
-
-    /* ========================================================
-       STATUS CARD
-       ======================================================== */
 
     .status-card {
-        padding: 15px;
-
-        border-radius: 16px;
-
-        background: rgba(8, 20, 43, 0.75);
-
-        border: 1px solid rgba(0, 229, 255, 0.12);
-
-        margin-top: 15px;
+        padding: 14px;
+        border-radius: 14px;
+        background: #142238;
+        border: 1px solid #2b405b;
+        margin-top: 12px;
     }
-
     .status-row {
         display: flex;
         align-items: center;
-        gap: 9px;
-
-        color: #a9b5d0;
-
+        gap: 8px;
+        color: #d5e0ef !important;
         font-size: 13px;
-
         margin: 8px 0;
     }
-
     .status-dot {
+        display: inline-block;
         width: 8px;
         height: 8px;
-
         border-radius: 50%;
-
-        background: #22c55e;
-
-        box-shadow:
-            0 0 10px rgba(34, 197, 94, 0.8);
+        background: #4ade80;
+        box-shadow: 0 0 8px rgba(74,222,128,.45);
+        flex: 0 0 auto;
     }
 
-
-    /* ========================================================
-       BUTTONS
-       ======================================================== */
-
-    .stButton > button {
-        width: 100%;
-
-        border-radius: 12px;
-
-        border: 1px solid rgba(0, 229, 255, 0.25);
-
-        background:
-            linear-gradient(
-                135deg,
-                rgba(0, 170, 255, 0.15),
-                rgba(88, 80, 255, 0.15)
-            );
-
-        color: #dffaff;
-
-        font-weight: 650;
-
-        min-height: 42px;
-
-        transition: all 0.2s ease;
-    }
-
-    .stButton > button:hover {
-        border-color: #00e5ff;
-
-        box-shadow:
-            0 0 18px rgba(0, 229, 255, 0.18);
-
-        color: #ffffff;
-    }
-
-
-    /* ========================================================
-       FILE UPLOADER
-       ======================================================== */
-
-    [data-testid="stFileUploader"] {
-        background: rgba(8, 20, 43, 0.55);
-
+    /* Chat messages */
+    [data-testid="stChatMessage"] {
+        background: #111d30;
+        border: 1px solid #293c56;
         border-radius: 16px;
+        margin-bottom: 12px;
+        padding: 12px 14px;
+    }
+    [data-testid="stChatMessage"] p,
+    [data-testid="stChatMessage"] li,
+    [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] {
+        color: #f1f5f9 !important;
     }
 
+    /* Inputs, select menus, text areas and chat input */
+    input, textarea,
+    [data-baseweb="input"] input,
+    [data-baseweb="textarea"] textarea {
+        color: #f8fafc !important;
+        background-color: #101b2d !important;
+        -webkit-text-fill-color: #f8fafc !important;
+        caret-color: #67e8f9 !important;
+    }
 
-    /* ========================================================
-       CHAT INPUT
-       ======================================================== */
+    [data-baseweb="select"] > div {
+        color: #f8fafc !important;
+        background-color: #101b2d !important;
+        border-color: #354a66 !important;
+        border-radius: 10px !important;
+    }
+
+    [data-baseweb="select"] span,
+    [data-baseweb="select"] input {
+        color: #f8fafc !important;
+        -webkit-text-fill-color: #f8fafc !important;
+    }
+
+    [role="listbox"], [role="option"] {
+        color: #f8fafc !important;
+        background-color: #142238 !important;
+    }
 
     [data-testid="stChatInput"] {
-        border-color: rgba(0, 229, 255, 0.25);
+        background: #101b2d !important;
+        border-color: #3b5878 !important;
+    }
+    [data-testid="stChatInput"] textarea {
+        color: #f8fafc !important;
+        -webkit-text-fill-color: #f8fafc !important;
     }
 
+    /* Buttons */
+    .stButton > button, .stDownloadButton > button {
+        color: #f0fbff !important;
+        background: linear-gradient(135deg, #164e63, #3730a3);
+        border: 1px solid #3b718d;
+        border-radius: 11px;
+        min-height: 42px;
+        font-weight: 700;
+        transition: filter .2s ease, border-color .2s ease;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        color: #ffffff !important;
+        border-color: #67e8f9;
+        filter: brightness(1.12);
+    }
 
-    /* ========================================================
-       SELECTBOX / INPUTS
-       ======================================================== */
+    /* File uploader and alerts */
+    [data-testid="stFileUploader"] section {
+        background: #111d30;
+        border: 1px dashed #3b526e;
+        border-radius: 13px;
+    }
+    [data-testid="stFileUploader"] *,
+    [data-testid="stAlert"] * {
+        color: #f1f5f9 !important;
+    }
 
-    div[data-baseweb="select"] > div {
-        background: rgba(8, 20, 43, 0.70);
-
-        border-color: rgba(120, 160, 255, 0.18);
-
+    [data-testid="stExpander"] {
+        background: #111d30;
+        border: 1px solid #293c56;
         border-radius: 12px;
     }
 
-    input {
-        background: rgba(8, 20, 43, 0.70) !important;
+    hr { border-color: #2b3b52 !important; }
+
+    /* Focus indicators */
+    button:focus-visible, input:focus-visible, textarea:focus-visible {
+        outline: 2px solid #67e8f9 !important;
+        outline-offset: 2px !important;
     }
-
-
-    /* ========================================================
-       DIVIDER
-       ======================================================== */
-
-    hr {
-        border-color: rgba(120, 160, 255, 0.10);
-    }
-
-
-    /* ========================================================
-       MOBILE
-       ======================================================== */
 
     @media (max-width: 768px) {
-
-        .block-container {
-            padding: 1rem;
-        }
-
-        .hero {
-            padding: 22px;
-            border-radius: 18px;
-        }
-
-        .hero-title {
-            font-size: 34px;
-        }
-
-        .hero-subtitle {
-            font-size: 14px;
-        }
-
-        .feature-card {
-            margin-bottom: 10px;
-        }
+        .block-container { padding: 1rem 1rem 2rem; }
+        .hero { padding: 22px; border-radius: 17px; }
+        .hero-title { font-size: 33px; }
+        .hero-subtitle { font-size: 14px; }
+        .feature-card { margin-bottom: 10px; }
     }
-
     </style>
     """,
     unsafe_allow_html=True,
@@ -825,7 +711,7 @@ st.markdown(
         padding:15px;
     ">
 
-        Study Tutor AI • Powered by CrewAI + Groq
+        Study Tutor AI • Built with Streamlit, CrewAI & Groq
 
     </div>
     """,
