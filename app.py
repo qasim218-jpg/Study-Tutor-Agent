@@ -10,8 +10,12 @@ from rag import build_index
 
 
 # ============================================================
-# PAGE CONFIGURATION
+# CONFIGURATION
 # ============================================================
+
+MAX_PDF_SIZE_MB = 15
+MAX_PDF_CHARS = 600_000
+MAX_CHAT_MESSAGES = 30
 
 st.set_page_config(
     page_title="Study Tutor AI",
@@ -22,15 +26,13 @@ st.set_page_config(
 
 
 # ============================================================
-# CUSTOM CSS — DARK, PROFESSIONAL THEME
+# PROFESSIONAL DARK UI
 # ============================================================
 
 st.markdown(
     """
     <style>
-    :root {
-        color-scheme: dark;
-    }
+    :root { color-scheme: dark; }
 
     .stApp {
         background:
@@ -59,18 +61,14 @@ st.markdown(
         letter-spacing: -0.02em;
     }
 
-    p, li, label {
-        color: #e2e8f0;
-    }
+    p, li, label { color: #e2e8f0; }
 
     [data-testid="stSidebar"] {
         background: #101b2d;
         border-right: 1px solid #273850;
     }
 
-    [data-testid="stSidebar"] * {
-        color: #edf4ff;
-    }
+    [data-testid="stSidebar"] * { color: #edf4ff; }
 
     [data-testid="stChatMessage"] {
         background: #111d30;
@@ -151,13 +149,9 @@ st.markdown(
         border-radius: 12px;
     }
 
-    [data-testid="stAlert"] p {
-        color: inherit;
-    }
+    [data-testid="stAlert"] p { color: inherit; }
 
-    hr {
-        border-color: #2b3b52 !important;
-    }
+    hr { border-color: #2b3b52 !important; }
 
     button:focus-visible,
     input:focus-visible,
@@ -167,9 +161,7 @@ st.markdown(
     }
 
     @media (max-width: 768px) {
-        .block-container {
-            padding: 1rem 1rem 2rem;
-        }
+        .block-container { padding: 1rem 1rem 2rem; }
     }
     </style>
     """,
@@ -197,11 +189,31 @@ for key, default_value in DEFAULT_STATE.items():
 
 
 # ============================================================
+# MEMORY MANAGEMENT
+# ============================================================
+
+def trim_memory():
+    """Keep only recent messages to limit session memory."""
+    if len(st.session_state.memory) > MAX_CHAT_MESSAGES:
+        st.session_state.memory = (
+            st.session_state.memory[-MAX_CHAT_MESSAGES:]
+        )
+
+
+def clear_conversation():
+    """Clear chat history without removing the PDF."""
+    st.session_state.memory = []
+
+
+# ============================================================
 # PDF RESET CALLBACK
 # ============================================================
 
 def clear_pdf():
-    """Remove the active PDF and its semantic index."""
+    """
+    Clear the document and its index.
+    Called by Streamlit before the next script rerun.
+    """
 
     st.session_state.study_material = ""
     st.session_state.pdf_name = ""
@@ -209,12 +221,10 @@ def clear_pdf():
     st.session_state.rag_index = None
     st.session_state.pdf_page_count = 0
     st.session_state.pdf_error = ""
-
-    # Clear the uploader before the next script run.
-    st.session_state["study_pdf_uploader"] = None
-
-    # Avoid confusing follow-up questions from an old document.
     st.session_state.memory = []
+
+    # Reset the uploader through the callback.
+    st.session_state["study_pdf_uploader"] = None
 
 
 # ============================================================
@@ -223,61 +233,92 @@ def clear_pdf():
 
 def process_uploaded_pdf(uploaded_file):
     """
-    Extract selectable text, create a semantic index,
-    and activate the new document only after indexing succeeds.
+    Extract selectable PDF text with a size limit, build a
+    lightweight BM25 index, and avoid storing a duplicate
+    full-text copy in session state.
     """
 
-    file_bytes = uploaded_file.getvalue()
-    current_hash = hashlib.sha256(file_bytes).hexdigest()
-
-    # Same document: do not index it again.
-    if current_hash == st.session_state.pdf_hash:
+    if uploaded_file is None:
         return
 
-    # Prevent accidental use of the previous PDF if the new one fails.
-    st.session_state.study_material = ""
-    st.session_state.pdf_name = ""
-    st.session_state.pdf_hash = ""
-    st.session_state.rag_index = None
-    st.session_state.pdf_page_count = 0
-    st.session_state.pdf_error = ""
+    # Check file size before reading or parsing the PDF.
+    if uploaded_file.size > MAX_PDF_SIZE_MB * 1024 * 1024:
+        st.session_state.pdf_error = (
+            f"File is too large. Please upload a PDF smaller "
+            f"than {MAX_PDF_SIZE_MB} MB."
+        )
+        return
 
     try:
+        file_bytes = uploaded_file.getvalue()
+        current_hash = hashlib.sha256(file_bytes).hexdigest()
+
+        # Avoid rebuilding the index for the same file.
+        if current_hash == st.session_state.pdf_hash:
+            del file_bytes
+            return
+
+        # Remove the previous document before processing a new one.
+        st.session_state.study_material = ""
+        st.session_state.pdf_name = ""
+        st.session_state.pdf_hash = ""
+        st.session_state.rag_index = None
+        st.session_state.pdf_page_count = 0
+        st.session_state.pdf_error = ""
+        st.session_state.memory = []
+
         with st.spinner("Reading your PDF..."):
             reader = PdfReader(io.BytesIO(file_bytes))
 
             extracted_pages = []
+            total_chars = 0
+            page_count = len(reader.pages)
 
             for page in reader.pages:
-                page_text = page.extract_text()
+                if total_chars >= MAX_PDF_CHARS:
+                    break
 
-                if page_text:
-                    extracted_pages.append(page_text)
+                page_text = page.extract_text() or ""
+
+                if not page_text.strip():
+                    continue
+
+                remaining = MAX_PDF_CHARS - total_chars
+                page_text = page_text[:remaining]
+
+                extracted_pages.append(page_text)
+                total_chars += len(page_text)
 
             extracted_text = "\n".join(extracted_pages).strip()
 
+            # Release intermediate references as soon as possible.
+            del extracted_pages
+
         if not extracted_text:
             st.session_state.pdf_error = (
-                "No selectable text could be extracted. "
-                "This document may need OCR."
+                "No selectable text could be extracted from "
+                "this PDF. It may be scanned and require OCR."
             )
+            del file_bytes
             return
 
         with st.spinner(
-            "Building the semantic search index. "
-            "The first run may take longer while the model loads..."
+            "Preparing your study material. "
+            "Large documents may take a little longer..."
         ):
             index = build_index(extracted_text)
 
-        # Activate only after indexing succeeds.
-        st.session_state.study_material = extracted_text
+        # Store only a short status string and the search index.
+        st.session_state.study_material = (
+            "PDF indexed and ready for document-based questions."
+        )
         st.session_state.pdf_name = uploaded_file.name
         st.session_state.pdf_hash = current_hash
         st.session_state.rag_index = index
-        st.session_state.pdf_page_count = len(reader.pages)
+        st.session_state.pdf_page_count = page_count
 
-        # Start a fresh conversation for the new document.
-        st.session_state.memory = []
+        del extracted_text
+        del file_bytes
 
     except Exception as exc:
         st.session_state.study_material = ""
@@ -285,7 +326,6 @@ def process_uploaded_pdf(uploaded_file):
         st.session_state.pdf_hash = ""
         st.session_state.rag_index = None
         st.session_state.pdf_page_count = 0
-
         st.session_state.pdf_error = (
             f"{type(exc).__name__}: {exc}"
         )
@@ -296,10 +336,8 @@ def process_uploaded_pdf(uploaded_file):
 # ============================================================
 
 with st.sidebar:
-
     st.title("🎓 Study Tutor AI")
     st.caption("Your intelligent study companion")
-
     st.divider()
 
     st.subheader("📚 Study Material")
@@ -309,8 +347,8 @@ with st.sidebar:
         type=["pdf"],
         key="study_pdf_uploader",
         help=(
-            "Upload lecture notes, textbook chapters, "
-            "or other selectable-text study material."
+            f"Upload a selectable-text PDF up to "
+            f"{MAX_PDF_SIZE_MB} MB."
         ),
     )
 
@@ -319,7 +357,6 @@ with st.sidebar:
 
     if st.session_state.pdf_error:
         st.error("The PDF could not be prepared.")
-
         with st.expander("Technical details"):
             st.code(st.session_state.pdf_error)
 
@@ -332,31 +369,32 @@ with st.sidebar:
         st.caption(
             f"Document: {st.session_state.pdf_name}"
         )
-
         st.caption(
-            f"Pages: {st.session_state.pdf_page_count}"
+            f"Pages in PDF: {st.session_state.pdf_page_count}"
         )
-
         st.caption(
             "Searchable passages: "
             f"{len(st.session_state.rag_index['chunks']):,}"
         )
 
-        if st.button(
+        st.caption(
+            "Text processing is limited to the first "
+            f"{MAX_PDF_CHARS:,} characters."
+        )
+
+        st.button(
             "🗑️ Remove Study PDF",
+            key="remove_pdf_button",
             use_container_width=True,
-        ):
-            clear_pdf()
-            st.rerun()
+            on_click=clear_pdf,
+        )
 
     elif uploaded_file is None:
         st.caption(
-            "Upload a study PDF to enable document-based "
-            "semantic search."
+            "Upload a PDF to ask questions about your notes."
         )
 
     st.divider()
-
     st.subheader("⚙️ Tutor Settings")
 
     difficulty = st.selectbox(
@@ -375,28 +413,23 @@ with st.sidebar:
     )
 
     st.divider()
-
     st.subheader("🧠 Session Memory")
 
-    message_count = len(st.session_state.memory)
-
     st.caption(
-        f"{message_count} messages in this session"
+        f"{len(st.session_state.memory)} recent messages "
+        f"(maximum {MAX_CHAT_MESSAGES})"
+    )
+    st.caption(
+        "Only recent conversation messages are retained "
+        "in this session."
     )
 
-    st.caption(
-        "Recent conversation context is limited to help "
-        "control token usage."
-    )
-
-    st.divider()
-
-    if st.button(
+    st.button(
         "🗑️ Clear Conversation",
+        key="clear_conversation_button",
         use_container_width=True,
-    ):
-        st.session_state.memory = []
-        st.rerun()
+        on_click=clear_conversation,
+    )
 
 
 # ============================================================
@@ -433,8 +466,8 @@ with col2:
     with st.container(border=True):
         st.subheader("📚 Learn From Your Notes")
         st.write(
-            "Upload your study material and ask questions "
-            "using semantic search across relevant passages."
+            "Upload your study material and retrieve "
+            "relevant passages using lightweight text search."
         )
 
 with col3:
@@ -453,29 +486,31 @@ with col3:
 st.divider()
 st.subheader("💬 Ask Your Tutor")
 
-# Display saved conversation.
 for message in st.session_state.memory:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 
 # ============================================================
-# CHAT INPUT
+# CHAT INPUT AND RESPONSE
 # ============================================================
 
 question = st.chat_input(
     "Ask anything about your studies..."
 )
 
-
 if question:
+    question = question.strip()
 
-    # Capture previous conversation BEFORE saving the new question.
+    if not question:
+        st.stop()
+
+    # Capture earlier context before adding this question.
     conversation = get_memory_text(
         st.session_state.memory
     )
 
-    # Add learning preferences without changing the main UI.
+    # Preserve compatibility with the updated agent.py.
     enhanced_question = f"""
 Student learning level: {difficulty}
 Preferred teaching style: {response_style}
@@ -484,7 +519,6 @@ Student question:
 {question}
 """
 
-    # Display and save the user message.
     with st.chat_message("user"):
         st.markdown(question)
 
@@ -493,12 +527,12 @@ Student question:
         "user",
         question,
     )
+    trim_memory()
 
-    # Generate a tutor response using the RAG index.
+    answer = ""
+
     with st.chat_message("assistant"):
-
         with st.spinner("🧠 Your tutor is thinking..."):
-
             try:
                 answer = ask_tutor(
                     question=enhanced_question,
@@ -533,12 +567,12 @@ Student question:
                         f"{type(exc).__name__}: {exc}"
                     )
 
-    # Store the answer for subsequent follow-up questions.
     add_message(
         st.session_state.memory,
         "assistant",
         answer,
     )
+    trim_memory()
 
 
 # ============================================================
@@ -548,5 +582,5 @@ Student question:
 st.divider()
 
 st.caption(
-    "Study Tutor AI • Streamlit • Semantic RAG • Groq"
+    "Study Tutor AI • Streamlit • Lightweight RAG • Groq"
 )
